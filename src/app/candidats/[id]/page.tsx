@@ -7,6 +7,9 @@ import CandidatDetailClient from "@/components/CandidatDetailClient";
 import BottomNav from "@/components/layout/BottomNav";
 import { APP_URL, SITE_NAME } from "@/lib/constants";
 
+// force-dynamic : génère les OG tags à chaque requête (pas de cache statique)
+export const dynamic = "force-dynamic";
+
 async function getCandidate(id: string) {
   try {
     return await prisma.candidate.findUnique({
@@ -25,10 +28,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   const title       = `${c.name} — ${SITE_NAME}`;
   const description = `Votez pour ${c.name} (${c.filiere}) ! ${c.voteCount} vote${c.voteCount > 1 ? "s" : ""} reçus.`;
   const url         = `${APP_URL}/candidats/${c.id}`;
-  // Priorité : vraie photo Cloudinary, sinon image OG SVG générée
-  const image       = c.photoUrl && !c.photoUrl.startsWith("/placeholder")
-    ? c.photoUrl
-    : `${APP_URL}/og/candidate/${c.id}`;
+  // OG image : toujours la route dédiée qui génère un vrai PNG 1200×630
+  const ogImage     = `${APP_URL}/og/candidate/${c.id}`;
 
   return {
     title,
@@ -37,14 +38,14 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       title,
       description,
       url,
-      type:   "profile",
-      images: [{ url: image, width: 800, height: 1000, alt: c.name }],
+      type:   "website",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: c.name }],
     },
     twitter: {
       card:        "summary_large_image",
       title,
       description,
-      images:      [image],
+      images:      [ogImage],
     },
   };
 }

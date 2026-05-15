@@ -1,95 +1,171 @@
 // src/app/og/candidate/[id]/route.tsx
-// Génère un Open Graph image dynamique par candidat
+// Génère une image PNG 1200×630 pour l'Open Graph de chaque candidat.
+// Utilise ImageResponse (Satori) — rendu HTML→PNG, compatible WhatsApp/Telegram/Twitter.
+import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { SITE_NAME } from "@/lib/constants";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // On retourne un SVG inline comme image OG
-  // (En production, utiliser @vercel/og pour du rendu HTML→image)
   try {
-    const candidate = await prisma.candidate.findUnique({
+    const c = await prisma.candidate.findUnique({
       where: { id: params.id },
-      select: { name: true, filiere: true, number: true, photoUrl: true },
+      select: { name: true, filiere: true, number: true, photoUrl: true, voteCount: true },
     });
 
-    const name = candidate?.name ?? "Candidat";
-    const filiere = candidate?.filiere ?? "";
-    const num = candidate?.number ?? 0;
+    const name    = c?.name    ?? "Candidat";
+    const filiere = c?.filiere ?? "";
+    const num     = String(c?.number ?? 0).padStart(2, "0");
+    const votes   = (c?.voteCount ?? 0).toLocaleString("fr-FR");
+    const hasPhoto = !!(c?.photoUrl && !c.photoUrl.startsWith("/placeholder") && c.photoUrl.startsWith("http"));
 
-    const svg = `
-<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1C0F0A"/>
-      <stop offset="100%" stop-color="#2D1A0E"/>
-    </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#F0C040"/>
-      <stop offset="100%" stop-color="#C9950A"/>
-    </linearGradient>
-  </defs>
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: "1200px",
+            height: "630px",
+            display: "flex",
+            background: "linear-gradient(135deg, #1C0F0A 0%, #2D1A0E 100%)",
+            fontFamily: "Georgia, serif",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Photo côté gauche */}
+          {hasPhoto && (
+            <div style={{ display: "flex", width: "480px", height: "630px", flexShrink: 0, overflow: "hidden" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={c!.photoUrl!}
+                alt={name}
+                width={480}
+                height={630}
+                style={{ width: "480px", height: "630px", objectFit: "cover", objectPosition: "center top" }}
+              />
+              {/* Gradient de fondu vers la droite */}
+              <div style={{ position: "absolute", left: "320px", top: 0, width: "160px", height: "630px", background: "linear-gradient(to right, transparent, #1C0F0A)" }} />
+            </div>
+          )}
 
-  <!-- Background -->
-  <rect width="1200" height="630" fill="url(#bg)"/>
+          {/* Contenu texte */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              padding: hasPhoto ? "60px 60px 60px 40px" : "60px 80px",
+              flex: 1,
+            }}
+          >
+            {/* Badge numéro */}
+            <div
+              style={{
+                display: "flex",
+                background: "linear-gradient(135deg, #F0C040, #C9950A)",
+                borderRadius: "99px",
+                padding: "6px 22px",
+                width: "fit-content",
+                marginBottom: "22px",
+                color: "white",
+                fontSize: "20px",
+                fontWeight: "bold",
+                letterSpacing: "2px",
+              }}
+            >
+              #{num}
+            </div>
 
-  <!-- Decorative circles -->
-  <circle cx="900" cy="315" r="280" fill="none" stroke="#C9A882" stroke-width="1" opacity="0.15"/>
-  <circle cx="900" cy="315" r="220" fill="none" stroke="#C9A882" stroke-width="1" opacity="0.1"/>
+            {/* Nom */}
+            <div
+              style={{
+                color: "white",
+                fontSize: hasPhoto ? "52px" : "64px",
+                fontWeight: "bold",
+                lineHeight: 1.1,
+                marginBottom: "10px",
+              }}
+            >
+              {name}
+            </div>
 
-  <!-- Left accent bar -->
-  <rect x="0" y="0" width="6" height="630" fill="url(#gold)"/>
+            {/* Filière */}
+            <div style={{ color: "#C9A882", fontSize: "24px", marginBottom: "28px", letterSpacing: "1px" }}>
+              {filiere}
+            </div>
 
-  <!-- Logo M -->
-  <circle cx="120" cy="80" r="40" fill="none" stroke="#C9A882" stroke-width="1.5" opacity="0.7"/>
-  <text x="120" y="96" text-anchor="middle" font-family="Georgia,serif" font-size="52" font-style="italic" fill="#C9A882" opacity="0.7">M</text>
-  <text x="120" y="90" text-anchor="middle" font-family="Georgia,serif" font-size="24" font-weight="bold" fill="white" opacity="0.9">M</text>
+            {/* Compteur votes */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                background: "rgba(255,255,255,0.08)",
+                borderRadius: "99px",
+                padding: "10px 22px",
+                width: "fit-content",
+                marginBottom: "36px",
+                border: "1px solid rgba(201,149,10,0.3)",
+              }}
+            >
+              <div style={{ color: "#F0C040", fontSize: "20px" }}>★</div>
+              <div style={{ color: "white", fontSize: "22px", fontWeight: "bold" }}>
+                {votes} vote{(c?.voteCount ?? 0) > 1 ? "s" : ""}
+              </div>
+            </div>
 
-  <!-- Site name -->
-  <text x="178" y="70" font-family="Georgia,serif" font-size="18" letter-spacing="3" fill="#C9A882" opacity="0.8">MISS &amp; MISTER</text>
-  <text x="178" y="95" font-family="Georgia,serif" font-size="13" letter-spacing="4" fill="#C9A882" opacity="0.5">ISTIC.YDE. 2026</text>
+            {/* CTA bouton */}
+            <div
+              style={{
+                display: "flex",
+                background: "linear-gradient(135deg, #F0C040, #C9950A)",
+                borderRadius: "99px",
+                padding: "14px 36px",
+                width: "fit-content",
+                color: "white",
+                fontSize: "22px",
+                fontWeight: "bold",
+              }}
+            >
+              Voter pour {name.split(" ")[0]} →
+            </div>
+          </div>
 
-  <!-- Candidate number badge -->
-  <rect x="100" y="220" width="90" height="38" rx="19" fill="url(#gold)"/>
-  <text x="145" y="245" text-anchor="middle" font-family="Georgia,serif" font-size="18" font-weight="bold" fill="white">${String(num).padStart(2,"0")}</text>
+          {/* Logo en bas à droite */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "24px",
+              right: "32px",
+              color: "rgba(201,168,130,0.35)",
+              fontSize: "16px",
+              letterSpacing: "2px",
+              display: "flex",
+            }}
+          >
+            MISS & MISTER ISTIC.YDE 2026
+          </div>
 
-  <!-- Candidate name -->
-  <text x="100" y="340" font-family="Georgia,serif" font-size="72" font-weight="bold" fill="white" opacity="0.97">${name}</text>
-
-  <!-- Filiere -->
-  <text x="100" y="395" font-family="Georgia,serif" font-size="28" fill="#C9A882" opacity="0.75">${filiere}</text>
-
-  <!-- CTA -->
-  <rect x="100" y="450" width="280" height="58" rx="29" fill="url(#gold)"/>
-  <text x="240" y="487" text-anchor="middle" font-family="Georgia,serif" font-size="20" font-weight="bold" fill="white">Voter maintenant →</text>
-
-  <!-- Bottom text -->
-  <text x="100" y="590" font-family="Georgia,serif" font-size="16" letter-spacing="2" fill="#C9A882" opacity="0.4">istickamervote.vercel.app</text>
-
-  <!-- Decorative sparkles top-right -->
-  <g fill="white" opacity="0.6">
-    <path d="M1100 80 L1101.5 84 L1100 88 L1098.5 84 Z"/>
-    <path d="M1096 84 L1100 85.5 L1104 84 L1100 82.5 Z"/>
-    <path d="M1150 120 L1151 123 L1150 126 L1149 123 Z"/>
-    <path d="M1147 123 L1150 124 L1153 123 L1150 122 Z"/>
-  </g>
-</svg>`.trim();
-
-    return new Response(svg, {
-      headers: {
-        "Content-Type": "image/svg+xml",
-        "Cache-Control": "public, max-age=3600",
-      },
-    });
-  } catch {
-    // Fallback OG générique
-    const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
-      <rect width="1200" height="630" fill="#1C0F0A"/>
-      <text x="600" y="315" text-anchor="middle" font-family="Georgia,serif" font-size="60" fill="#C9A882">ISTIC VOTE 2026</text>
-    </svg>`;
-    return new Response(svg, { headers: { "Content-Type": "image/svg+xml" } });
+          {/* Barre dorée à gauche */}
+          <div style={{ position: "absolute", left: 0, top: 0, width: "6px", height: "630px", background: "linear-gradient(to bottom, #F0C040, #C9950A)", display: "flex" }} />
+        </div>
+      ),
+      { width: 1200, height: 630 }
+    );
+  } catch (err) {
+    console.error("[OG /candidate]", err);
+    return new ImageResponse(
+      (
+        <div style={{ width: "1200px", height: "630px", background: "#1C0F0A", display: "flex", alignItems: "center", justifyContent: "center", color: "#C9A882", fontSize: "48px", fontFamily: "Georgia, serif" }}>
+          ISTIC VOTE 2026
+        </div>
+      ),
+      { width: 1200, height: 630 }
+    );
   }
 }

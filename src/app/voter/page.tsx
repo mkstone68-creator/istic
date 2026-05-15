@@ -1,5 +1,4 @@
 "use client";
-// src/app/voter/page.tsx — Voter flow avec rate limit 2min affiché à l'utilisateur
 import { useState, useEffect, useRef, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -18,52 +17,12 @@ function WhatsAppIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-// ── Composant countdown pour le rate limit ───────────────────────────────────
-function RateLimitCountdown({ seconds, onExpire }: { seconds: number; onExpire: () => void }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    setRemaining(seconds);
-  }, [seconds]);
-
-  useEffect(() => {
-    if (remaining <= 0) { onExpire(); return; }
-    timerRef.current = setTimeout(() => setRemaining((s) => s - 1), 1000);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [remaining, onExpire]);
-
-  const pct = Math.max(0, (remaining / seconds) * 100);
-
-  return (
-    <div style={{
-      background: "#FFF7ED", border: "2px solid #FCD34D", borderRadius: 16,
-      padding: "20px 24px", textAlign: "center",
-    }}>
-      <div style={{ fontSize: "2rem", marginBottom: 8 }}>⏳</div>
-      <div style={{ fontWeight: 700, fontSize: ".95rem", color: "#92400E", marginBottom: 6 }}>
-        Patientez avant de voter à nouveau
-      </div>
-      <div style={{ fontFamily: "var(--font-display)", fontSize: "2.5rem", fontWeight: 900, color: "#C9950A", marginBottom: 12 }}>
-        {remaining}s
-      </div>
-      <div style={{ background: "#FDE68A", borderRadius: 99, height: 6, overflow: "hidden" }}>
-        <div style={{
-          height: "100%", background: "linear-gradient(90deg,#F0C040,#C9950A)",
-          width: pct + "%", transition: "width 1s linear", borderRadius: 99,
-        }} />
-      </div>
-      <div style={{ fontSize: ".75rem", color: "#92400E", marginTop: 10 }}>
-        Limite anti-abus : 1 vote toutes les 2 minutes par numéro
-      </div>
-    </div>
-  );
-}
-
 function VoterInner() {
   const router = useRouter();
   const params = useSearchParams();
   const candidateId = params.get("id");
+  const txFromUrl   = params.get("tx");
+  const statusFromUrl = params.get("status");
 
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [voteCount, setVoteCount] = useState(1);
@@ -78,12 +37,24 @@ function VoterInner() {
   const [errorMsg, setErrorMsg] = useState("");
   const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
 
+  const pollingRef = useRef(false);
+
   useEffect(() => {
     if (!candidateId) return;
     fetch(`/api/candidates/${candidateId}`)
-      .then((r) => r.json())
-      .then((d) => setCandidate(d.data));
+      .then(r => r.json())
+      .then(d => setCandidate(d.data));
   }, [candidateId]);
+
+  // ── Retour depuis Fapshi : reprendre le polling immédiatement ──────────────
+  useEffect(() => {
+    if (txFromUrl && statusFromUrl === "success" && !pollingRef.current) {
+      setStep("processing");
+      setPaymentData({ transactionId: txFromUrl, voteCount: 0 });
+      pollStatus(txFromUrl);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txFromUrl, statusFromUrl]);
 
   useEffect(() => {
     if (!useCustom) setAmountXAF(voteCount * VOTE_PRICE_FCFA);
@@ -93,9 +64,7 @@ function VoterInner() {
     setAmountXAF(xaf);
     setSelectedCurrency(currency);
     setIsEurope(europe);
-    if (!useCustom && xaf > 0) {
-      setVoteCount(Math.floor(xaf / VOTE_PRICE_FCFA));
-    }
+    if (!useCustom && xaf > 0) setVoteCount(Math.floor(xaf / VOTE_PRICE_FCFA));
   }, [useCustom]);
 
   const computedVotes = Math.floor(amountXAF / VOTE_PRICE_FCFA);
@@ -120,47 +89,29 @@ function VoterInner() {
       const res = await fetch("/api/payment/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          candidateId,
-          amount: amountXAF,
-          phoneNumber: phone,
-          paymentMethod: "MOBILE_MONEY",
-        }),
+        body: JSON.stringify({ candidateId, amount: amountXAF, phoneNumber: phone, paymentMethod: "MOBILE_MONEY" }),
       });
 
-      let data: Record<string, unknown> = {};
-      const contentType = res.headers.get("content-type") ?? "";
-      if (contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        // Server returned HTML (e.g. 502 gateway error) — treat as server error
-        setErrorMsg("Le serveur est temporairement indisponible. Réessayez dans quelques instants.");
-        setStep("error");
-        setLoading(false);
-        return;
-      }
+      const data = await res.json().catch(() => ({ success: false, error: "Réponse invalide" }));
 
-      if (!data.success) {
-        // Vérifier si c'est un rate limit (429)
+      if (!res.ok || !data.success) {
         if (res.status === 429 && data.retryAfterSeconds) {
           setRateLimitSeconds(data.retryAfterSeconds as number);
           setStep("rateLimit");
-          setLoading(false);
-          return;
+        } else {
+          setErrorMsg((data.error as string) ?? "Erreur de paiement");
+          setStep("error");
         }
-        setErrorMsg((data.error as string) ?? "Erreur de paiement");
-        setStep("error");
         setLoading(false);
         return;
       }
 
-      const resData = data.data as { transactionId: string; voteCount: number; paymentLink?: string };
-      setPaymentData({
-        transactionId: resData.transactionId,
-        voteCount: resData.voteCount,
-        paymentLink: resData.paymentLink,
-      });
-      pollStatus(resData.transactionId);
+      const txId       = (data.data?.transactionId ?? data.transactionId) as string;
+      const nVotes     = (data.data?.voteCount ?? data.votes ?? computedVotes) as number;
+      const paymentLink = (data.data?.paymentLink ?? data.paymentUrl) as string | undefined;
+
+      setPaymentData({ transactionId: txId, voteCount: nVotes, paymentLink });
+      pollStatus(txId);
     } catch {
       setErrorMsg("Erreur réseau. Vérifiez votre connexion.");
       setStep("error");
@@ -169,18 +120,34 @@ function VoterInner() {
   }
 
   async function pollStatus(transactionId: string, attempts = 0) {
-    if (attempts > 24) {
-      setErrorMsg("Délai dépassé. Contactez le support.");
+    pollingRef.current = true;
+    if (attempts > 40) {
+      setErrorMsg("Délai dépassé. Vérifiez votre paiement et contactez le support.");
       setStep("error");
       setLoading(false);
+      pollingRef.current = false;
       return;
     }
-    await new Promise((r) => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, 3000));
     try {
-      const res = await fetch(`/api/payment/status/${transactionId}`);
-      const data = await res.json();
-      if (data.data?.status === "CONFIRMED") { setStep("success"); setLoading(false); return; }
-      if (data.data?.status === "FAILED") { setErrorMsg("Paiement refusé."); setStep("error"); setLoading(false); return; }
+      const res  = await fetch(`/api/payment/status/${transactionId}`);
+      const data = await res.json().catch(() => ({}));
+      const status = data.data?.status as string | undefined;
+
+      if (status === "CONFIRMED") {
+        setPaymentData(prev => ({ ...prev!, voteCount: data.data?.voteCount ?? prev?.voteCount ?? 0 }));
+        setStep("success");
+        setLoading(false);
+        pollingRef.current = false;
+        return;
+      }
+      if (status === "FAILED" || status === "EXPIRED") {
+        setErrorMsg("Paiement refusé ou expiré.");
+        setStep("error");
+        setLoading(false);
+        pollingRef.current = false;
+        return;
+      }
       pollStatus(transactionId, attempts + 1);
     } catch {
       pollStatus(transactionId, attempts + 1);
@@ -194,6 +161,8 @@ function VoterInner() {
     setPaymentData(null);
     setErrorMsg("");
     setRateLimitSeconds(0);
+    pollingRef.current = false;
+    if (candidateId) router.replace(`/voter?id=${candidateId}`);
   }
 
   if (!candidateId) {
@@ -209,22 +178,19 @@ function VoterInner() {
     );
   }
 
-  // ── RATE LIMIT ────────────────────────────────────────────────────────────
   if (step === "rateLimit") {
     return (
       <div className="shell">
         <div className="page animate-fadeup" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", gap: 20 }}>
-          <RateLimitCountdown seconds={rateLimitSeconds} onExpire={reset} />
-          <button className="btn btn-outline" onClick={reset} style={{ width: "100%", marginTop: 8 }}>
-            Revenir à la page de vote
-          </button>
+          <div style={{ fontSize: "3rem" }}>⏳</div>
+          <h2 style={{ fontFamily: "var(--font-display)", textAlign: "center" }}>Patientez {rateLimitSeconds}s</h2>
+          <button className="btn btn-outline" onClick={reset} style={{ width: "100%" }}>Revenir</button>
         </div>
         <BottomNav />
       </div>
     );
   }
 
-  // ── SUCCESS ───────────────────────────────────────────────────────────────
   if (step === "success") {
     return (
       <div className="shell">
@@ -232,15 +198,8 @@ function VoterInner() {
           <div style={{ width: 90, height: 90, background: "linear-gradient(135deg,#F0C040,#C9950A)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2.5rem", boxShadow: "var(--shadow-gold)" }}>✅</div>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.8rem", fontWeight: 900, textAlign: "center" }}>Vote confirmé !</h2>
           <p style={{ color: "var(--gray-600)", textAlign: "center" }}>
-            <strong style={{ color: "var(--gold)" }}>{paymentData?.voteCount} vote(s)</strong>{" "}ajouté(s) pour <strong>{candidate?.name}</strong>
+            <strong style={{ color: "var(--gold)" }}>{paymentData?.voteCount ?? computedVotes} vote(s)</strong>{" "}ajouté(s) pour <strong>{candidate?.name}</strong>
           </p>
-          <div style={{ background: "var(--gray-50)", borderRadius: "var(--radius-lg)", padding: "16px 20px", width: "100%", textAlign: "center" }}>
-            <div style={{ fontSize: ".8rem", color: "var(--gray-400)" }}>Montant débité</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: "1.6rem", fontWeight: 900, color: "var(--gold)" }}>{formatAmount(amountXAF, "XAF")}</div>
-          </div>
-          <div style={{ background: "#FFF7ED", border: "1px solid #FCD34D", borderRadius: "var(--radius-md)", padding: "10px 16px", width: "100%", fontSize: ".78rem", color: "#92400E", textAlign: "center" }}>
-            ⏳ Vous pouvez voter à nouveau dans 2 minutes
-          </div>
           <div style={{ display: "flex", gap: 12, width: "100%" }}>
             <Link href="/classement" className="btn btn-outline" style={{ flex: 1 }}>Classement</Link>
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={reset}>Voter encore</button>
@@ -251,7 +210,6 @@ function VoterInner() {
     );
   }
 
-  // ── PROCESSING ────────────────────────────────────────────────────────────
   if (step === "processing") {
     return (
       <div className="shell">
@@ -267,14 +225,13 @@ function VoterInner() {
             </a>
           )}
           <p style={{ color: "var(--gray-400)", fontSize: ".85rem", textAlign: "center" }}>
-            Confirmez le paiement sur votre téléphone. Cette page se met à jour automatiquement.
+            Confirmez le paiement sur votre téléphone.<br/>Cette page se met à jour automatiquement.
           </p>
         </div>
       </div>
     );
   }
 
-  // ── ERROR ─────────────────────────────────────────────────────────────────
   if (step === "error") {
     return (
       <div className="shell">
@@ -289,7 +246,6 @@ function VoterInner() {
     );
   }
 
-  // ── MAIN FORM ─────────────────────────────────────────────────────────────
   return (
     <div className="shell">
       <div className="page">
@@ -299,55 +255,41 @@ function VoterInner() {
         </div>
 
         <div style={{ padding: "20px 20px 0" }}>
-          {/* Candidate card */}
           {candidate ? (
             <div className="animate-fadeup" style={{ background: "linear-gradient(135deg,#1C0F0A 0%,#2D1A0E 100%)", borderRadius: "var(--radius-xl)", overflow: "hidden", marginBottom: 24, position: "relative" }}>
               <div style={{ position: "absolute", top: 12, left: 12, background: "linear-gradient(135deg,#F0C040,#C9950A)", color: "white", borderRadius: "99px", padding: "3px 10px", fontSize: ".72rem", fontWeight: 700, zIndex: 2 }}>
                 {String(candidate.number).padStart(2, "0")}
               </div>
-              <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "6rem", background: "linear-gradient(180deg,rgba(201,149,10,.15) 0%,rgba(201,149,10,.04) 100%)", position: "relative", overflow: "hidden" }}>
+              <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "6rem", position: "relative", overflow: "hidden" }}>
                 {candidate.photoUrl && !candidate.photoUrl.startsWith("/placeholder")
                   ? <img src={candidate.photoUrl} alt={candidate.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                  : "👩"
-                }
+                  : "👩"}
               </div>
               <div style={{ padding: "14px 18px 16px" }}>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: "1.3rem", fontWeight: 900, color: "white" }}>{candidate.name}</div>
                 <div style={{ fontSize: ".82rem", color: "#C9A882" }}>{candidate.filiere}</div>
+                <div style={{ fontSize: ".78rem", color: "rgba(201,168,130,.6)", marginTop: 4 }}>
+                  {candidate.voteCount.toLocaleString("fr-FR")} vote{candidate.voteCount > 1 ? "s" : ""}
+                </div>
               </div>
             </div>
           ) : (
             <div style={{ height: 240, background: "var(--gray-50)", borderRadius: "var(--radius-xl)", marginBottom: 24 }} />
           )}
 
-          {/* Currency converter */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--gray-600)", letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 10 }}>
-              Montant &amp; devise
-            </div>
+            <div style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--gray-600)", letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 10 }}>Montant &amp; devise</div>
             <CurrencyConverter onAmountChange={handleCurrencyChange} initialVotes={1} />
           </div>
 
-          {/* Quick packs */}
           {!isEurope && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--gray-600)", letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 10 }}>
-                Packs rapides (FCFA)
-              </div>
+              <div style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--gray-600)", letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 10 }}>Packs rapides (FCFA)</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {VOTE_PACKS.map((pack) => (
-                  <button
-                    key={pack.votes}
+                {VOTE_PACKS.map(pack => (
+                  <button key={pack.votes}
                     onClick={() => { setVoteCount(pack.votes); setUseCustom(false); }}
-                    style={{
-                      padding: "9px 14px", borderRadius: "99px",
-                      border: `2px solid ${amountXAF === pack.price ? "var(--gold)" : "var(--gray-100)"}`,
-                      background: amountXAF === pack.price ? "var(--gold-pale)" : "var(--white)",
-                      cursor: "pointer", fontSize: ".8rem", fontWeight: 700,
-                      color: amountXAF === pack.price ? "var(--gold-dark)" : "var(--gray-600)",
-                      transition: "all .15s", whiteSpace: "nowrap",
-                    }}
-                  >
+                    style={{ padding: "9px 14px", borderRadius: "99px", border: `2px solid ${amountXAF === pack.price ? "var(--gold)" : "var(--gray-100)"}`, background: amountXAF === pack.price ? "var(--gold-pale)" : "var(--white)", cursor: "pointer", fontSize: ".8rem", fontWeight: 700, color: amountXAF === pack.price ? "var(--gold-dark)" : "var(--gray-600)", transition: "all .15s", whiteSpace: "nowrap" }}>
                     {pack.label}
                     {pack.discount > 0 && <span style={{ marginLeft: 4, fontSize: ".65rem", color: "#166534" }}>-{pack.discount}%</span>}
                   </button>
@@ -356,26 +298,19 @@ function VoterInner() {
             </div>
           )}
 
-          {/* AFRICA payment */}
           {!isEurope ? (
             <>
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--gray-600)", letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 10 }}>
-                  Méthode de paiement
-                </div>
+                <div style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--gray-600)", letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 10 }}>Méthode de paiement</div>
                 <div style={{ padding: "14px 16px", border: "2px solid var(--gold)", borderRadius: "var(--radius-md)", background: "var(--gold-pale)", display: "flex", alignItems: "center", gap: 12 }}>
                   <Smartphone size={20} color="var(--gold)" />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: ".9rem" }}>Fapshi</div>
                     <div style={{ fontSize: ".75rem", color: "var(--gray-400)" }}>MTN, Orange, Moov…</div>
                   </div>
-                  <div style={{ marginLeft: "auto", width: 18, height: 18, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "white" }} />
-                  </div>
                 </div>
               </div>
 
-              {/* Résumé votes calculés */}
               <div style={{ background: "var(--gray-50)", borderRadius: "var(--radius-md)", padding: "12px 16px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: ".84rem", color: "var(--gray-600)" }}>Votes obtenus</span>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", fontWeight: 900, color: "var(--gold)" }}>
@@ -384,84 +319,38 @@ function VoterInner() {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ fontSize: ".82rem", fontWeight: 600, color: "var(--gray-600)", marginBottom: 8, display: "block" }}>
-                  Numéro Fapshi
-                </label>
+                <label style={{ fontSize: ".82rem", fontWeight: 600, color: "var(--gray-600)", marginBottom: 8, display: "block" }}>Numéro Fapshi</label>
                 <div style={{ position: "relative" }}>
                   <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "var(--gray-600)", fontSize: ".9rem" }}>+237</span>
-                  <input
-                    className="input-gold"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                    placeholder="677 000 000"
-                    style={{ paddingLeft: 60 }}
-                  />
+                  <input className="input-gold" type="tel" value={phone}
+                    onChange={e => setPhone(e.target.value.replace(/\D/g, ""))}
+                    placeholder="677 000 000" style={{ paddingLeft: 60 }} />
                 </div>
                 {errorMsg && <p style={{ color: "#B91C1C", fontSize: ".8rem", marginTop: 6 }}>{errorMsg}</p>}
               </div>
 
-              <button
-                className="btn btn-primary"
-                onClick={handleAfricaPay}
+              <button className="btn btn-primary" onClick={handleAfricaPay}
                 disabled={loading || !phone || amountXAF < 100 || computedVotes < 1}
-                style={{ fontSize: "1rem", marginBottom: 8 }}
-              >
+                style={{ fontSize: "1rem", marginBottom: 8 }}>
                 {loading ? <><div className="spinner" /> Traitement…</> : <>Valider et payer · {formatAmount(amountXAF, "XAF")}</>}
               </button>
-              <p style={{ textAlign: "center", fontSize: ".75rem", color: "var(--gray-400)", marginBottom: 8 }}>🔒 Paiement sécurisé via Fapshi</p>
-              <p style={{ textAlign: "center", fontSize: ".72rem", color: "var(--gray-400)", marginBottom: 24 }}>⏳ Limite : 1 vote toutes les 2 minutes par numéro</p>
+              <p style={{ textAlign: "center", fontSize: ".75rem", color: "var(--gray-400)", marginBottom: 24 }}>🔒 Paiement sécurisé via Fapshi</p>
             </>
           ) : (
-            /* EUROPE wire transfer */
             <>
-              <div style={{ background: "#FFF7ED", border: "2px solid #FED7AA", borderRadius: "var(--radius-lg)", padding: "18px 18px", marginBottom: 20 }}>
-                <div style={{ fontWeight: 700, fontSize: ".9rem", color: "#C2410C", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                  🇪🇺 Instructions de paiement Europe
-                </div>
-                {EUROPE_WIRE.instructions.map((step, i) => (
+              <div style={{ background: "#FFF7ED", border: "2px solid #FED7AA", borderRadius: "var(--radius-lg)", padding: "18px", marginBottom: 20 }}>
+                <div style={{ fontWeight: 700, fontSize: ".9rem", color: "#C2410C", marginBottom: 12 }}>🇪🇺 Instructions de paiement Europe</div>
+                {EUROPE_WIRE.instructions.map((s, i) => (
                   <div key={i} style={{ display: "flex", gap: 10, marginBottom: 8, alignItems: "flex-start" }}>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#C2410C", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".7rem", fontWeight: 700, flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                    <div style={{ fontSize: ".82rem", color: "#9A3412", lineHeight: 1.5 }}>{step}</div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#C2410C", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".7rem", fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+                    <div style={{ fontSize: ".82rem", color: "#9A3412", lineHeight: 1.5 }}>{s}</div>
                   </div>
                 ))}
               </div>
-
-              <div style={{ background: "var(--gray-50)", borderRadius: "var(--radius-lg)", padding: "14px 16px", marginBottom: 20 }}>
-                <div style={{ fontSize: ".78rem", color: "var(--gray-400)", marginBottom: 4 }}>Résumé de votre vote</div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ fontSize: ".88rem", color: "var(--gray-600)" }}>Candidat</span>
-                  <span style={{ fontWeight: 700, fontSize: ".88rem" }}>{candidate?.name}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ fontSize: ".88rem", color: "var(--gray-600)" }}>Votes</span>
-                  <span style={{ fontWeight: 700, fontSize: ".88rem", color: "var(--gold)" }}>{computedVotes} vote{computedVotes > 1 ? "s" : ""}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: ".88rem", color: "var(--gray-600)" }}>Montant FCFA</span>
-                  <span style={{ fontWeight: 700, fontSize: ".88rem" }}>{formatAmount(amountXAF, "XAF")}</span>
-                </div>
-              </div>
-
-              <a
-                href={EUROPE_WIRE.whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={handleEuropeWire}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                  padding: "16px", borderRadius: "var(--radius-xl)",
-                  background: "#25D366", color: "white", textDecoration: "none",
-                  fontWeight: 700, fontSize: "1rem",
-                  boxShadow: "0 4px 20px rgba(37,211,102,.35)", marginBottom: 8,
-                }}
-              >
-                <WhatsAppIcon size={22} />
-                Envoyer le reçu par WhatsApp
+              <a href={EUROPE_WIRE.whatsappLink} target="_blank" rel="noopener noreferrer" onClick={handleEuropeWire}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px", borderRadius: "var(--radius-xl)", background: "#25D366", color: "white", textDecoration: "none", fontWeight: 700, fontSize: "1rem", boxShadow: "0 4px 20px rgba(37,211,102,.35)", marginBottom: 8 }}>
+                <WhatsAppIcon size={22} /> Envoyer le reçu par WhatsApp
               </a>
-              <p style={{ textAlign: "center", fontSize: ".75rem", color: "var(--gray-400)", marginBottom: 24, lineHeight: 1.6 }}>
-                Vos votes seront crédités dans les 24h après vérification du paiement.
-              </p>
             </>
           )}
         </div>

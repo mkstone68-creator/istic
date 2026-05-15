@@ -18,15 +18,23 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: APP_URL,
     siteName: SITE_NAME,
-    images: [{ url: `${APP_URL}/og/default`, width: 1200, height: 630, alt: SITE_NAME }],
+    images: [
+      {
+        url:    `${APP_URL}/og/default`,
+        width:  1200,
+        height: 630,
+        alt:    SITE_NAME,
+        type:   "image/png",
+      },
+    ],
     locale: "fr_FR",
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
-    title: SITE_NAME,
+    card:        "summary_large_image",
+    title:       SITE_NAME,
     description: SITE_DESCRIPTION,
-    images: [`${APP_URL}/og/default`],
+    images:      [`${APP_URL}/og/default`],
   },
 };
 

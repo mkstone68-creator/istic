@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/layout/BottomNav";
+import { useRouter } from "next/navigation";
 import { Search, Trophy, Share2, Check } from "lucide-react";
 import { APP_URL } from "@/lib/constants";
 
@@ -17,6 +18,7 @@ interface Candidate {
 }
 
 export default function CandidatsPage() {
+  const router = useRouter();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [filtered, setFiltered] = useState<Candidate[]>([]);
   const [search, setSearch] = useState("");
@@ -91,7 +93,8 @@ export default function CandidatsPage() {
           ) : filtered.map((c, idx) => (
             <div key={c.id}
               className="animate-fadeup"
-              style={{ animationDelay: `${idx * 0.06}s`, borderRadius: 16, overflow: "hidden", background: "white", boxShadow: "0 2px 12px rgba(0,0,0,.07)", border: "1px solid var(--gray-100)", display: "flex", flexDirection: "column" }}>
+              onClick={() => router.push(`/candidats/${c.id}`)}
+              style={{ animationDelay: `${idx * 0.06}s`, borderRadius: 16, overflow: "hidden", background: "white", boxShadow: "0 2px 12px rgba(0,0,0,.07)", border: "1px solid var(--gray-100)", display: "flex", flexDirection: "column", cursor: "pointer" }}>
 
               {/* Photo */}
               <div style={{ position: "relative", paddingBottom: "120%", background: "linear-gradient(135deg,#1C0F0A,#2D1A0E)", overflow: "hidden" }}>
@@ -112,7 +115,7 @@ export default function CandidatsPage() {
 
                 {/* Partager */}
                 <button
-                  onClick={() => handleShare(c)}
+                  onClick={e => { e.stopPropagation(); handleShare(c); }}
                   style={{ position: "absolute", top: 8, right: 8, width: 30, height: 30, borderRadius: "50%", background: copiedId === c.id ? "#DCFCE7" : "rgba(255,255,255,.85)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: copiedId === c.id ? "#166534" : "var(--gray-600)", backdropFilter: "blur(4px)" }}>
                   {copiedId === c.id ? <Check size={13} /> : <Share2 size={13} />}
                 </button>
@@ -136,6 +139,7 @@ export default function CandidatsPage() {
 
                 <Link
                   href={`/voter?id=${c.id}`}
+                  onClick={e => e.stopPropagation()}
                   className="btn btn-primary"
                   style={{ padding: "9px 12px", fontSize: ".78rem", textAlign: "center", textDecoration: "none", marginTop: "auto" }}>
                   Voter

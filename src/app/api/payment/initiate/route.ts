@@ -5,75 +5,60 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const FAPSHI_BASE_URL =
-  process.env.FAPSHI_BASE_URL ||
-  (process.env.FAPSHI_MODE === "sandbox"
-    ? "https://sandbox.fapshi.com"
-    : "https://live.fapshi.com");
+// URL Fapshi calculée uniquement depuis FAPSHI_MODE — ignore FAPSHI_BASE_URL
+// pour éviter qu'une ancienne valeur (fapshi.com/api) provoque un 404.
+function getFapshiBaseUrl(): string {
+  const mode = (process.env.FAPSHI_MODE ?? "live").toLowerCase();
+  if (mode === "sandbox") return "https://sandbox.fapshi.com";
+  return "https://live.fapshi.com";
+}
 
-const FAPSHI_API_USER = process.env.FAPSHI_API_USER || "";
-const FAPSHI_API_KEY = process.env.FAPSHI_API_KEY || "";
-const VOTE_PRICE = Number(process.env.VOTE_AMOUNT || 100);
+const FAPSHI_API_USER = process.env.FAPSHI_API_USER ?? "";
+const FAPSHI_API_KEY  = process.env.FAPSHI_API_KEY  ?? "";
+const VOTE_PRICE      = Number(process.env.VOTE_AMOUNT ?? 100);
 
-function publicBaseUrl(req: NextRequest) {
-  const fromEnv = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+function publicBaseUrl(req: NextRequest): string {
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL;
   if (fromEnv) return fromEnv.replace(/\/$/, "");
-  const proto = req.headers.get("x-forwarded-proto") || "https";
-  const host = req.headers.get("host") || "isticvote.online";
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const host  = req.headers.get("host") ?? "isticvote.online";
   return `${proto}://${host}`;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const {
-      candidateId,
-      // Accept both `votes` and `amount` for backward compat with the voter page
-      votes,
-      amount: amountFromBody,
-      phone,
-      phoneNumber,
-      email,
-      name,
-    } = body || {};
+    const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const { candidateId, votes, amount: amountBody, phone, phoneNumber, email, name } = body;
 
     if (!candidateId) {
-      return NextResponse.json(
-        { success: false, error: "candidateId manquant" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "candidateId manquant" }, { status: 400 });
     }
 
-    // Derive vote count and XAF amount
+    // votes OU amount (compat voter page qui envoie amount)
     let nVotes: number;
     let amount: number;
     if (votes !== undefined) {
       nVotes = Math.max(1, Math.min(1000, Number(votes) || 1));
       amount = nVotes * VOTE_PRICE;
-    } else if (amountFromBody !== undefined) {
-      amount = Math.max(VOTE_PRICE, Number(amountFromBody) || VOTE_PRICE);
+    } else if (amountBody !== undefined) {
+      amount = Math.max(VOTE_PRICE, Number(amountBody) || VOTE_PRICE);
       nVotes = Math.floor(amount / VOTE_PRICE);
     } else {
       nVotes = 1;
       amount = VOTE_PRICE;
     }
 
-    const resolvedPhone = String(phone || phoneNumber || "").trim();
+    const resolvedPhone = String(phone ?? phoneNumber ?? "").trim();
 
-    const candidate = await prisma.candidate.findUnique({
-      where: { id: String(candidateId) },
-    });
+    const candidate = await prisma.candidate.findUnique({ where: { id: String(candidateId) } });
     if (!candidate) {
-      return NextResponse.json(
-        { success: false, error: "Candidat introuvable" },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: "Candidat introuvable" }, { status: 404 });
     }
 
     if (!FAPSHI_API_USER || !FAPSHI_API_KEY) {
-      console.error("[Fapshi] Clés API manquantes");
+      console.error("[Fapshi] FAPSHI_API_USER ou FAPSHI_API_KEY manquant");
       return NextResponse.json(
-        { success: false, error: "Configuration de paiement manquante. Contactez l'administrateur." },
+        { success: false, error: "Configuration paiement manquante — contactez l'administrateur." },
         { status: 500 }
       );
     }
@@ -81,31 +66,33 @@ export async function POST(req: NextRequest) {
     const tx = await prisma.transaction.create({
       data: {
         candidateId: candidate.id,
-        voteCount: nVotes,
+        voteCount:   nVotes,
         amount,
-        currency: "XAF",
-        status: "PENDING",
-        phoneNumber: resolvedPhone || "",
+        currency:    "XAF",
+        status:      "PENDING",
+        phoneNumber: resolvedPhone,
         paymentMethod: "MOBILE_MONEY",
         isEuropeWire: false,
         email: email ? String(email) : null,
-        name: name ? String(name) : null,
+        name:  name  ? String(name)  : null,
       },
     });
 
-    const base = publicBaseUrl(req);
+    const base       = publicBaseUrl(req);
+    const fapshiBase = getFapshiBaseUrl();
+    const fapshiUrl  = `${fapshiBase}/initiate-pay`;
+
+    console.log(`[Fapshi] POST ${fapshiUrl} | amount=${amount} | tx=${tx.id}`);
 
     const payload: Record<string, unknown> = {
       amount,
-      email: email || undefined,
-      userId: tx.id,
-      externalId: tx.id,
-      message: `Vote pour ${candidate.name} (${nVotes} vote${nVotes > 1 ? "s" : ""})`,
+      userId:      tx.id,
+      externalId:  tx.id,
+      message:     `Vote pour ${candidate.name} (${nVotes} vote${nVotes > 1 ? "s" : ""})`,
       redirectUrl: `${base}/voter?id=${candidate.id}&tx=${tx.id}&status=success`,
     };
+    if (email)         payload.email = String(email);
     if (resolvedPhone) payload.phone = resolvedPhone;
-
-    const fapshiUrl = `${FAPSHI_BASE_URL.replace(/\/$/, "")}/initiate-pay`;
 
     let fapshiRes: Response;
     try {
@@ -113,90 +100,61 @@ export async function POST(req: NextRequest) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
-          apiuser: FAPSHI_API_USER,
-          apikey: FAPSHI_API_KEY,
+          Accept:         "application/json",
+          apiuser:        FAPSHI_API_USER,
+          apikey:         FAPSHI_API_KEY,
         },
-        body: JSON.stringify(payload),
+        body:  JSON.stringify(payload),
         cache: "no-store",
       });
     } catch (err) {
       console.error("[Fapshi] Erreur réseau:", err);
-      await prisma.transaction.update({
-        where: { id: tx.id },
-        data: { status: "FAILED" },
-      });
-      return NextResponse.json(
-        { success: false, error: "Service de paiement injoignable" },
-        { status: 502 }
-      );
+      await prisma.transaction.update({ where: { id: tx.id }, data: { status: "FAILED" } });
+      return NextResponse.json({ success: false, error: "Service de paiement injoignable" }, { status: 502 });
     }
 
     const rawText = await fapshiRes.text();
-    let data: Record<string, unknown> | null = null;
-    try {
-      data = rawText ? JSON.parse(rawText) : null;
-    } catch {
-      data = { raw: rawText };
-    }
+    console.log(`[Fapshi] status=${fapshiRes.status} body=${rawText.slice(0, 200)}`);
+
+    let data: Record<string, unknown> = {};
+    try { data = rawText ? JSON.parse(rawText) : {}; } catch { data = { raw: rawText }; }
 
     if (!fapshiRes.ok) {
-      console.error("[Fapshi] Réponse non OK:", fapshiRes.status, data);
-      await prisma.transaction.update({
-        where: { id: tx.id },
-        data: { status: "FAILED" },
-      });
+      await prisma.transaction.update({ where: { id: tx.id }, data: { status: "FAILED" } });
       return NextResponse.json(
-        {
-          success: false,
-          error:
-            (data && ((data.message as string) || (data.error as string))) ||
-            `Erreur Fapshi (${fapshiRes.status})`,
-        },
+        { success: false, error: (data.message ?? data.error ?? `Erreur Fapshi (${fapshiRes.status})`) as string },
         { status: 502 }
       );
     }
 
-    const link = data?.link as string | undefined;
-    const transId = data?.transId as string | undefined;
+    const link    = data.link    as string | undefined;
+    const transId = data.transId as string | undefined;
 
     if (!link) {
       console.error("[Fapshi] Pas de 'link' dans la réponse:", data);
-      await prisma.transaction.update({
-        where: { id: tx.id },
-        data: { status: "FAILED" },
-      });
-      return NextResponse.json(
-        { success: false, error: "Réponse de paiement invalide" },
-        { status: 502 }
-      );
+      await prisma.transaction.update({ where: { id: tx.id }, data: { status: "FAILED" } });
+      return NextResponse.json({ success: false, error: "Réponse Fapshi invalide (pas de lien)" }, { status: 502 });
     }
 
     await prisma.transaction.update({
       where: { id: tx.id },
-      data: { externalRef: transId || null },
+      data:  { externalRef: transId ?? null },
     });
 
     return NextResponse.json({
-      success: true,
-      paymentUrl: link,
+      success:       true,
+      paymentUrl:    link,
       transactionId: tx.id,
-      providerRef: transId || null,
+      providerRef:   transId ?? null,
       amount,
-      votes: nVotes,
-      // Compat with voter page which reads data.data.*
-      data: {
-        transactionId: tx.id,
-        voteCount: nVotes,
-        paymentLink: link,
-      },
+      votes:         nVotes,
+      // compat voter page (lit data.data.*)
+      data: { transactionId: tx.id, voteCount: nVotes, paymentLink: link },
     });
+
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Erreur serveur";
-    console.error("[/api/payment/initiate] erreur:", err);
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
-    );
+    const msg = err instanceof Error ? err.message : "Erreur serveur";
+    console.error("[/api/payment/initiate]", err);
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

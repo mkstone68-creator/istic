@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/layout/BottomNav";
 import CurrencyConverter from "@/components/ui/CurrencyConverter";
-import { ArrowLeft, ExternalLink, Smartphone, CheckCircle2, XCircle, Clock, User } from "lucide-react";
+import { ArrowLeft, ExternalLink, Smartphone, CheckCircle2, XCircle, Clock, User, Lock } from "lucide-react";
 import type { Candidate } from "@/types";
 import { VOTE_PACKS, VOTE_PRICE_FCFA, EUROPE_WIRE } from "@/lib/constants";
 import { formatAmount } from "@/lib/currency";
@@ -33,11 +33,19 @@ function VoterInner() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"vote" | "processing" | "success" | "error" | "rateLimit">("vote");
+  const [votingStatus, setVotingStatus] = useState<{ active: boolean; message?: string } | null>(null);
   const [paymentData, setPaymentData] = useState<{ transactionId: string; voteCount: number; paymentLink?: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
 
   const pollingRef = useRef(false);
+
+  useEffect(() => {
+    fetch("/api/voting-status")
+      .then(r => r.json())
+      .then(d => setVotingStatus(d))
+      .catch(() => setVotingStatus({ active: true }));
+  }, []);
 
   useEffect(() => {
     if (!candidateId) return;
@@ -329,12 +337,26 @@ function VoterInner() {
                 {errorMsg && <p style={{ color: "#B91C1C", fontSize: ".8rem", marginTop: 6 }}>{errorMsg}</p>}
               </div>
 
-              <button className="btn btn-primary" onClick={handleAfricaPay}
-                disabled={loading || !phone || amountXAF < 100 || computedVotes < 1}
-                style={{ fontSize: "1rem", marginBottom: 8 }}>
-                {loading ? <><div className="spinner" /> Traitement…</> : <>Valider et payer · {formatAmount(amountXAF, "XAF")}</>}
-              </button>
-              <p style={{ textAlign: "center", fontSize: ".75rem", color: "var(--gray-400)", marginBottom: 24 }}>🔒 Paiement sécurisé via Fapshi</p>
+              {votingStatus && !votingStatus.active ? (
+                <div style={{ background: "#FEF2F2", border: "1.5px solid #FCA5A5", borderRadius: "var(--radius-lg)", padding: "18px 20px", marginBottom: 24, display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <XCircle size={22} color="#EF4444" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: ".9rem", color: "#B91C1C", marginBottom: 4 }}>Vote indisponible</div>
+                    <div style={{ fontSize: ".84rem", color: "#7F1D1D" }}>{votingStatus.message}</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <button className="btn btn-primary" onClick={handleAfricaPay}
+                    disabled={loading || !phone || amountXAF < 100 || computedVotes < 1}
+                    style={{ fontSize: "1rem", marginBottom: 8 }}>
+                    {loading ? <><div className="spinner" /> Traitement…</> : <>Valider et payer · {formatAmount(amountXAF, "XAF")}</>}
+                  </button>
+                  <p style={{ textAlign: "center", fontSize: ".75rem", color: "var(--gray-400)", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    <Lock size={11} /> Paiement sécurisé via Fapshi
+                  </p>
+                </>
+              )}
             </>
           ) : (
             <>

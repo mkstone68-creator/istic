@@ -50,6 +50,22 @@ export async function POST(req: NextRequest) {
 
     const resolvedPhone = String(phone ?? phoneNumber ?? "").trim();
 
+    // Guard : dates de vote
+    try {
+      const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
+      if (settings) {
+        const now = new Date();
+        if (settings.votingStartDate && now < new Date(settings.votingStartDate)) {
+          const d = new Date(settings.votingStartDate);
+          return NextResponse.json({ success: false, error: `Le vote commence le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` }, { status: 403 });
+        }
+        if (settings.votingEndDate && now > new Date(settings.votingEndDate)) {
+          const d = new Date(settings.votingEndDate);
+          return NextResponse.json({ success: false, error: `Le vote s'est terminé le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` }, { status: 403 });
+        }
+      }
+    } catch { /* DB indisponible → on laisse passer */ }
+
     const candidate = await prisma.candidate.findUnique({ where: { id: String(candidateId) } });
     if (!candidate) {
       return NextResponse.json({ success: false, error: "Candidat introuvable" }, { status: 404 });

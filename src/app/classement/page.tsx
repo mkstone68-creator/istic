@@ -85,8 +85,12 @@ export default function ClassementPage() {
             onClick={() => loadRanking(true)}
             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--gray-600)", display: "flex", alignItems: "center", padding: 6 }}
           >
-            <RefreshCw size={20} style={{ animation: refreshing ? "spin .7s linear infinite" : "none" }} />
+            <RefreshCw size={20} style={{
+              transition: "transform .3s",
+              animation: refreshing ? "spin-refresh .7s linear infinite" : "none",
+            }} />
           </button>
+          <style>{`@keyframes spin-refresh { to { transform: rotate(360deg); } }`}</style>
         </header>
 
         <div style={{ padding: "14px 20px 0" }}>

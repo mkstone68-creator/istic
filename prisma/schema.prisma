@@ -1,0 +1,81 @@
+// prisma/schema.prisma
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Candidate {
+  id            String        @id @default(cuid())
+  number        Int           @unique
+  name          String
+  filiere       String        @default("")
+  photoUrl      String        @default("")
+  description   String?       @db.Text
+  whatsappGroup String?
+  voteCount     Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  transactions  Transaction[]
+  votes         Vote[]
+
+  @@index([voteCount(sort: Desc)])
+  @@index([number])
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  candidateId     String
+  voteCount       Int               @default(1)
+  amount          Int
+  phoneNumber     String            @default("")
+  paymentMethod   String            @default("MOBILE_MONEY")
+  currency        String            @default("XAF")
+  status          TransactionStatus @default(PENDING)
+  externalRef     String?
+  providerPayload Json?
+  isEuropeWire    Boolean           @default(false)
+  email           String?
+  name            String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  candidate       Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  votes           Vote[]
+
+  @@index([candidateId])
+  @@index([status])
+  @@index([externalRef])
+}
+
+model Vote {
+  id            String      @id @default(cuid())
+  candidateId   String
+  transactionId String
+  count         Int         @default(1)
+  createdAt     DateTime    @default(now())
+  candidate     Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@index([transactionId])
+}
+
+model Settings {
+  id               String    @id @default("singleton")
+  votingStartDate  DateTime?
+  votingEndDate    DateTime?
+  isMaintenance    Boolean   @default(false)
+  maintenanceMsg   String?
+  updatedAt        DateTime  @updatedAt
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}

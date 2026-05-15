@@ -433,7 +433,7 @@ function VoterInner() {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ fontSize: ".82rem", fontWeight: 600, color: "var(--gray-600)", marginBottom: 8, display: "block" }}>Numéro Fapshi</label>
+                <label style={{ fontSize: ".82rem", fontWeight: 600, color: "var(--gray-600)", marginBottom: 8, display: "block" }}>Numéro de paiement</label>
                 <div style={{ position: "relative" }}>
                   <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "var(--gray-600)", fontSize: ".9rem" }}>+237</span>
                   <input className="input-gold" type="tel" value={phone}

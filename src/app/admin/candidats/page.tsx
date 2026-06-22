@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Plus, Pencil, Trash2, Trophy, Link2, Camera, X,
-  AlertTriangle, Check, User, ChevronRight, Loader2,
+  AlertTriangle, Check, User, ChevronRight, Loader2, RotateCcw,
 } from "lucide-react";
 
 interface Candidate {
@@ -51,6 +51,11 @@ export default function AdminCandidatsPage() {
   // ── Delete confirm ──────────────────────────────────────────────────────────
   const [deleteConfirm, setDeleteConfirm] = useState<Candidate | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // ── Réinitialisation des votes ────────────────────────────────────────────────
+  const [showReset, setShowReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState("");
 
   async function load() {
     const res = await fetch("/api/admin/candidates", { credentials: "include" });
@@ -128,6 +133,17 @@ export default function AdminCandidatsPage() {
     } finally { setDeleting(false); }
   }
 
+  async function handleReset() {
+    setResetting(true); setResetError("");
+    try {
+      const res = await fetch("/api/admin/reset-votes", { method: "POST", credentials: "include" });
+      const d = await res.json();
+      if (d.success) { setShowReset(false); load(); }
+      else setResetError(d.error ?? "Erreur");
+    } catch { setResetError("Erreur réseau"); }
+    finally { setResetting(false); }
+  }
+
   const canSave = !saving && !uploadingPhoto && !!form.name && !!form.filiere && !!form.number;
 
   return (
@@ -138,9 +154,14 @@ export default function AdminCandidatsPage() {
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 900, color: "#1A1914" }}>Candidats</h1>
           <div style={{ fontSize: ".8rem", color: "#9E9C91", marginTop: 2 }}>{candidates.length} candidat{candidates.length > 1 ? "s" : ""}</div>
         </div>
-        <button onClick={openCreate} style={{ display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#F0C040,#C9950A)", color: "white", border: "none", borderRadius: "99px", padding: "11px 20px", fontWeight: 700, fontSize: ".88rem", cursor: "pointer", boxShadow: "0 4px 16px rgba(201,149,10,.3)", fontFamily: "var(--font-body)" }}>
-          <Plus size={16} /> Ajouter
-        </button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button onClick={() => { setResetError(""); setShowReset(true); }} disabled={candidates.length === 0} style={{ display: "flex", alignItems: "center", gap: 6, background: "white", color: "#B91C1C", border: "1.5px solid #FCA5A5", borderRadius: "99px", padding: "11px 18px", fontWeight: 700, fontSize: ".88rem", cursor: candidates.length === 0 ? "not-allowed" : "pointer", opacity: candidates.length === 0 ? .5 : 1, fontFamily: "var(--font-body)" }}>
+            <RotateCcw size={16} /> Réinitialiser les votes
+          </button>
+          <button onClick={openCreate} style={{ display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#F0C040,#C9950A)", color: "white", border: "none", borderRadius: "99px", padding: "11px 20px", fontWeight: 700, fontSize: ".88rem", cursor: "pointer", boxShadow: "0 4px 16px rgba(201,149,10,.3)", fontFamily: "var(--font-body)" }}>
+            <Plus size={16} /> Ajouter
+          </button>
+        </div>
       </div>
 
       {/* ── Desktop table ── */}
@@ -448,6 +469,34 @@ export default function AdminCandidatsPage() {
               </button>
               <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, padding: "16px", background: "none", border: "none", fontWeight: 700, color: "#EF4444", cursor: deleting ? "not-allowed" : "pointer", fontSize: ".92rem", fontFamily: "var(--font-body)", opacity: deleting ? .6 : 1 }}>
                 {deleting ? "Suppression…" : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal réinitialisation des votes ── */}
+      {showReset && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", backdropFilter: "blur(4px)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={() => !resetting && setShowReset(false)}>
+          <div style={{ background: "white", borderRadius: 20, width: "100%", maxWidth: 420, textAlign: "center", boxShadow: "0 32px 80px rgba(0,0,0,.35)", overflow: "hidden" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "32px 32px 24px" }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <RotateCcw size={24} color="#EF4444" />
+              </div>
+              <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "#1A1914", marginBottom: 8 }}>Réinitialiser tous les votes ?</div>
+              <p style={{ color: "#5E5C53", fontSize: ".88rem", lineHeight: 1.6 }}>
+                Les votes de <strong>tous les candidats</strong> seront remis à <strong>0</strong>. Cela permet de recommencer une nouvelle journée de vote. Action irréversible.
+              </p>
+              {resetError && <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", color: "#B91C1C", fontSize: ".82rem", marginTop: 12 }}><AlertTriangle size={13} /> {resetError}</div>}
+            </div>
+            <div style={{ display: "flex", gap: 0, borderTop: "1px solid #F7F7F5" }}>
+              <button onClick={() => setShowReset(false)} disabled={resetting} style={{ flex: 1, padding: "16px", background: "none", border: "none", borderRight: "1px solid #F7F7F5", fontWeight: 600, color: "#5E5C53", cursor: resetting ? "not-allowed" : "pointer", fontSize: ".92rem", fontFamily: "var(--font-body)" }}>
+                Annuler
+              </button>
+              <button onClick={handleReset} disabled={resetting} style={{ flex: 1, padding: "16px", background: "none", border: "none", fontWeight: 700, color: "#EF4444", cursor: resetting ? "not-allowed" : "pointer", fontSize: ".92rem", fontFamily: "var(--font-body)", opacity: resetting ? .6 : 1 }}>
+                {resetting ? "Réinitialisation…" : "Réinitialiser"}
               </button>
             </div>
           </div>

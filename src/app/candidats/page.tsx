@@ -65,7 +65,7 @@ export default function CandidatsPage() {
             Nos candidats
           </h1>
           <div style={{ fontSize: ".72rem", color: "var(--gold)", fontWeight: 600, letterSpacing: ".05em" }}>
-            Miss &amp; Mister ISTIC.YDE 2026
+            Méta Reine — Meta Queen
           </div>
         </header>
 

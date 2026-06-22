@@ -113,7 +113,7 @@ export default function CandidatDetailClient({ candidate }: { candidate: Candida
               <div style={{ fontFamily: "var(--font-display)", fontSize: "1.6rem", fontWeight: 900, color: "var(--gold-dark)", lineHeight: 1 }}>
                 {candidate.voteCount.toLocaleString("fr-FR")}
               </div>
-              <div style={{ fontSize: ".78rem", color: "#92400E", fontWeight: 600, marginTop: 2 }}>votes reçus · 100 FCFA / vote</div>
+              <div style={{ fontSize: ".78rem", color: "#92400E", fontWeight: 600, marginTop: 2 }}>votes reçus</div>
             </div>
           </div>
 

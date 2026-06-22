@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SITE_NAME, SITE_DESCRIPTION, APP_URL } from "@/lib/constants";
+import { SITE_NAME, SITE_NAME_EN, SITE_DESCRIPTION, APP_URL } from "@/lib/constants";
 import { headers } from "next/headers";
 import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: {
-    default: SITE_NAME,
+    default: `${SITE_NAME} — ${SITE_NAME_EN}`,
     template: `%s — ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   themeColor: "#1C0F0A",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
   openGraph: {
-    title: SITE_NAME,
+    title: `${SITE_NAME} — ${SITE_NAME_EN}`,
     description: SITE_DESCRIPTION,
     url: APP_URL,
     siteName: SITE_NAME,
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card:        "summary_large_image",
-    title:       SITE_NAME,
+    title:       `${SITE_NAME} — ${SITE_NAME_EN}`,
     description: SITE_DESCRIPTION,
     images:      [`${APP_URL}/og/default`],
   },
@@ -144,7 +144,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 color: "#C9950A",
                 letterSpacing: ".04em",
               }}>
-                Miss &amp; Mister ISTIC.YDE 2026
+                Méta Reine — Meta Queen
               </div>
             </div>
           </div>

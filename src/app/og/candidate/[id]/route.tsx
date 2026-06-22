@@ -148,7 +148,7 @@ export async function GET(
               display: "flex",
             }}
           >
-            MISS & MISTER ISTIC.YDE 2026
+MÉTA REINE · META QUEEN
           </div>
 
           {/* Barre dorée à gauche */}

@@ -124,10 +124,10 @@ export async function GET() {
             display: "flex",
             marginBottom: "6px",
           }}>
-            MISS &amp; MISTER
+            MÉTA REINE
           </div>
 
-          {/* ISTIC.YDE. 2026 */}
+          {/* META QUEEN */}
           <div style={{
             fontFamily: serif,
             fontSize: "22px",
@@ -137,7 +137,7 @@ export async function GET() {
             display: "flex",
             marginBottom: "32px",
           }}>
-            ISTIC.YDE. 2026
+            META QUEEN
           </div>
 
           {/* Bouton CTA */}

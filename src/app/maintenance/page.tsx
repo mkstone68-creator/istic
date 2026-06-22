@@ -52,7 +52,7 @@ export default async function MaintenancePage() {
           fontSize: ".78rem", color: "rgba(201,168,130,.7)", fontWeight: 600,
           letterSpacing: ".05em",
         }}>
-          Miss &amp; Mister ISTIC.YDE 2026 — isticvote.online
+          Méta Reine — Meta Queen · isticvote.online
         </div>
       </div>
     </div>

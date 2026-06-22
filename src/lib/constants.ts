@@ -37,5 +37,6 @@ export const EUROPE_WIRE = {
 
 export const DEFAULT_WHATSAPP_SUPPORT = "https://wa.me/237690768603";
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://isticvote.online";
-export const SITE_NAME = "Miss & Mister ISTIC.YDE 2026";
-export const SITE_DESCRIPTION = "Votez pour vos candidats préférés — Plateforme officielle Miss & Mister ISTIC Yaoundé 2026";
+export const SITE_NAME = "Méta Reine";
+export const SITE_NAME_EN = "Meta Queen";
+export const SITE_DESCRIPTION = "Votez pour vos candidats préférés — Méta Reine / Meta Queen";

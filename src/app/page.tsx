@@ -15,10 +15,10 @@ export default function HomePage() {
             <Logo size={44} variant="icon" />
             <div>
               <div style={{ fontFamily: "var(--font-display)", fontSize: "1.05rem", fontWeight: 900, color: "var(--gray-900)", lineHeight: 1 }}>
-                MISS &amp; MISTER
+                MÉTA REINE
               </div>
               <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--gold)", letterSpacing: ".12em", textTransform: "uppercase" }}>
-                ISTIC.YDE. 2026
+                META QUEEN
               </div>
             </div>
           </div>
@@ -132,13 +132,13 @@ export default function HomePage() {
             }}><Coins size={22} color="white" /></div>
             <div>
               <div style={{ fontSize: ".68rem", color: "rgba(201,168,130,.7)", fontWeight: 600, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 2 }}>
-                Prix du vote
+                Vote gratuit
               </div>
               <div style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 900, color: "#F0C040" }}>
-                100 FCFA
+                100% gratuit
               </div>
               <div style={{ fontSize: ".72rem", color: "rgba(201,168,130,.6)" }}>
-                Paiement Mobile Money · Virement Europe
+                Un seul vote par personne
               </div>
             </div>
           </div>

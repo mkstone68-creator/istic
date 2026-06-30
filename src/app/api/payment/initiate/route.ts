@@ -1,6 +1,7 @@
 // src/app/api/payment/initiate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { VOTE_PRICE_FCFA, MIN_VOTES, MIN_PAYMENT_FCFA } from "@/lib/constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,8 @@ function getFapshiBaseUrl(): string {
 
 const FAPSHI_API_USER = process.env.FAPSHI_API_USER ?? "";
 const FAPSHI_API_KEY  = process.env.FAPSHI_API_KEY  ?? "";
-const VOTE_PRICE      = Number(process.env.VOTE_AMOUNT ?? 100);
+// Prix unique du vote (source de vérité = constants). Plus de dépendance à VOTE_AMOUNT.
+const VOTE_PRICE      = VOTE_PRICE_FCFA;
 
 function publicBaseUrl(req: NextRequest): string {
   const fromEnv = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL;
@@ -38,14 +40,22 @@ export async function POST(req: NextRequest) {
     let nVotes: number;
     let amount: number;
     if (votes !== undefined) {
-      nVotes = Math.max(1, Math.min(1000, Number(votes) || 1));
+      nVotes = Math.max(MIN_VOTES, Math.min(1000, Number(votes) || MIN_VOTES));
       amount = nVotes * VOTE_PRICE;
     } else if (amountBody !== undefined) {
-      amount = Math.max(VOTE_PRICE, Number(amountBody) || VOTE_PRICE);
+      amount = Math.max(MIN_PAYMENT_FCFA, Number(amountBody) || MIN_PAYMENT_FCFA);
       nVotes = Math.floor(amount / VOTE_PRICE);
     } else {
-      nVotes = 1;
-      amount = VOTE_PRICE;
+      nVotes = MIN_VOTES;
+      amount = MIN_PAYMENT_FCFA;
+    }
+
+    // Garde stricte : minimum 2 votes (100 FCFA)
+    if (nVotes < MIN_VOTES || amount < MIN_PAYMENT_FCFA) {
+      return NextResponse.json(
+        { success: false, error: `Minimum ${MIN_VOTES} votes (${MIN_PAYMENT_FCFA} FCFA).` },
+        { status: 400 }
+      );
     }
 
     const resolvedPhone = String(phone ?? phoneNumber ?? "").trim();

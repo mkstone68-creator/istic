@@ -1,15 +1,18 @@
 // src/lib/constants.ts
 
-export const VOTE_PRICE_FCFA = 100;
+export const VOTE_PRICE_FCFA = 50;
+
+// Minimum 2 votes (= 100 FCFA) : on ne peut pas acheter 1 seul vote.
+export const MIN_VOTES = 2;
+export const MIN_PAYMENT_FCFA = VOTE_PRICE_FCFA * MIN_VOTES; // 100
 
 export const VOTE_PACKS = [
-  { votes: 10, price: 1000, discount: 0, label: "10 votes" },
-  { votes: 25, price: 2250, discount: 10, label: "25 votes" },
-  { votes: 50, price: 4500, discount: 10, label: "50 votes" },
-  { votes: 100, price: 8000, discount: 20, label: "100 votes" },
+  { votes: 2, price: 100, discount: 0, label: "2 votes" },
+  { votes: 10, price: 500, discount: 0, label: "10 votes" },
+  { votes: 20, price: 1000, discount: 0, label: "20 votes" },
+  { votes: 50, price: 2500, discount: 0, label: "50 votes" },
+  { votes: 100, price: 5000, discount: 0, label: "100 votes" },
 ] as const;
-
-export const MIN_PAYMENT_FCFA = 100;
 
 // ── Fapshi ─────────────────────────────────────────────────────────────────
 export const FAPSHI_CONFIG = {

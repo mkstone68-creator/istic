@@ -52,7 +52,7 @@ export default function ClassementPage() {
   async function handleShare(entry: RankingEntryWithWA) {
     const url = `${APP_URL}/voter?id=${entry.id}`;
     const shareData = {
-      title: `Votez pour ${entry.name} — Méta Reine / Meta Queen`,
+      title: `Votez pour ${entry.name} — Reine du Meta By Helen`,
       text: `${entry.name} est N°${entry.rank} avec ${entry.voteCount} votes ! Soutenez-le/la !`,
       url,
     };
@@ -78,7 +78,7 @@ export default function ClassementPage() {
           <div>
             <h1 style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 900 }}>Classement</h1>
             <div style={{ fontSize: ".7rem", color: "var(--gold)", fontWeight: 600, letterSpacing: ".05em" }}>
-              Méta Reine — Meta Queen
+              Reine du Meta By Helen
             </div>
           </div>
           <button

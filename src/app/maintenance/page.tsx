@@ -52,7 +52,7 @@ export default async function MaintenancePage() {
           fontSize: ".78rem", color: "rgba(201,168,130,.7)", fontWeight: 600,
           letterSpacing: ".05em",
         }}>
-          Méta Reine — Meta Queen · isticvote.online
+          Reine du Meta By Helen · isticvote.online
         </div>
       </div>
     </div>

@@ -38,9 +38,9 @@ export default function CurrencyConverter({ onAmountChange, initialVotes = 1 }: 
   const [showPicker, setShowPicker] = useState(false);
 
   const numAmount = parseFloat(amount) || 0;
-  // For XAF amounts, enforce multiples of 100
+  // Montants en multiples du prix d'un vote (50 FCFA)
   const xafRaw = toXAF(numAmount, currency);
-  const xafAmount = currency === "XAF" ? Math.floor(xafRaw / 100) * 100 : Math.floor(xafRaw / 100) * 100;
+  const xafAmount = Math.floor(xafRaw / VOTE_PRICE_FCFA) * VOTE_PRICE_FCFA;
   const votes = votesFromAmount(numAmount, currency);
   const isEurope = isEuropeCurrency(currency);
   const curr = CURRENCIES.find((c) => c.code === currency) ?? CURRENCIES[0];
@@ -67,9 +67,10 @@ export default function CurrencyConverter({ onAmountChange, initialVotes = 1 }: 
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             onBlur={(e) => {
-              // Snap XAF amounts to nearest 100
+              // Snap XAF : multiples de 50, minimum 100 (2 votes)
               if (currency === "XAF") {
-                const v = Math.max(100, Math.round(parseFloat(e.target.value || "0") / 100) * 100);
+                const snapped = Math.round(parseFloat(e.target.value || "0") / VOTE_PRICE_FCFA) * VOTE_PRICE_FCFA;
+                const v = Math.max(VOTE_PRICE_FCFA * 2, snapped);
                 setAmount(String(v));
               }
             }}

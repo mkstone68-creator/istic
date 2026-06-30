@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
             <Lock size={26} color="#F0C040" />
           </div>
           <div style={{ fontFamily: "var(--font-display)", fontSize: "1.4rem", fontWeight: 900, color: "#1A1914", marginBottom: 4 }}>Administration</div>
-          <div style={{ fontSize: ".8rem", color: "#9E9C91" }}>Méta Reine — Meta Queen</div>
+          <div style={{ fontSize: ".8rem", color: "#9E9C91" }}>Reine du Meta By Helen</div>
         </div>
 
         <form onSubmit={handleSubmit}>

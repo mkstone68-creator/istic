@@ -7,7 +7,6 @@ import {
   Globe, Phone, ExternalLink, Copy, Check, Users,
 } from "lucide-react";
 
-const CHANNEL_LINK  = "https://whatsapp.com/channel/0029VbBYugl2kNFtAjMS5T1M";
 const DEV_PHONE     = "+237694600007";
 const DEV_WA        = "https://wa.me/237694600007";
 const DEV_PORTFOLIO = "https://xhrisfolio.vercel.app/";
@@ -36,7 +35,7 @@ function CopyBtn({ text, label }: { text: string; label: string }) {
 
 const STEPS = [
   { Icon: Users,        title: "Choisissez un candidat",               desc: "Parcourez la liste et cliquez sur le candidat que vous souhaitez soutenir." },
-  { Icon: CreditCard,   title: "Sélectionnez un montant",              desc: "100 FCFA = 1 vote. Packs rapides disponibles ou montant libre." },
+  { Icon: CreditCard,   title: "Sélectionnez un montant",              desc: "50 FCFA = 1 vote — minimum 2 votes (100 FCFA). Packs rapides ou montant libre." },
   { Icon: Smartphone,   title: "Mobile Money (Cameroun)",              desc: "Entrez votre numéro Fapshi (MTN ou Orange Money) et confirmez sur votre téléphone." },
   { Icon: Globe,        title: "Virement (hors Cameroun)",             desc: "Transférez vers Messina bengono (+237690768603) puis envoyez le reçu via WhatsApp." },
   { Icon: CheckCircle2, title: "Votes crédités",                       desc: "Mobile Money : instantané. Virement : sous 24h après vérification manuelle." },
@@ -91,29 +90,13 @@ export default function SupportPage() {
                 <CreditCard size={22} color="white" />
               </div>
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 900, color: "#F0C040" }}>100 FCFA = 1 vote</div>
-                <div style={{ fontSize: ".75rem", color: "rgba(201,168,130,.6)", marginTop: 2 }}>Mobile Money · Virement international</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 900, color: "#F0C040" }}>50 FCFA = 1 vote</div>
+                <div style={{ fontSize: ".75rem", color: "rgba(201,168,130,.6)", marginTop: 2 }}>Minimum 2 votes · Mobile Money · Virement international</div>
               </div>
               <Link href="/candidats" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#F0C040,#C9950A)", color: "white", textDecoration: "none", borderRadius: 99, padding: "10px 18px", fontWeight: 700, fontSize: ".82rem", whiteSpace: "nowrap", flexShrink: 0 }}>
                 Voter <ArrowRight size={14} />
               </Link>
             </div>
-          </section>
-
-          {/* Chaîne WhatsApp établissement */}
-          <section style={{ marginBottom: 32 }}>
-            <div style={{ fontSize: ".7rem", fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--gray-400)", marginBottom: 14 }}>Actualités de l'établissement</div>
-            <a href={CHANNEL_LINK} target="_blank" rel="noopener noreferrer"
-              style={{ display: "flex", alignItems: "center", gap: 14, background: "white", borderRadius: 16, padding: "16px 20px", textDecoration: "none", boxShadow: "0 2px 10px rgba(0,0,0,.06)" }}>
-              <div style={{ width: 46, height: 46, borderRadius: "50%", background: "#25D366", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <WhatsAppIcon size={22} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--gray-900)" }}>Chaîne WhatsApp officielle</div>
-                <div style={{ fontSize: ".75rem", color: "var(--gray-500)", marginTop: 2 }}>Suivez les actualités et résultats de l'ISTIC Yaoundé</div>
-              </div>
-              <ExternalLink size={16} color="var(--gray-400)" />
-            </a>
           </section>
 
           {/* Contact développeur */}

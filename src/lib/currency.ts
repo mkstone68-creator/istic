@@ -30,7 +30,7 @@ const RATES: Record<string, number> = {
   XOF: 1,           // parité fixe XAF/XOF
 };
 
-export const VOTE_PRICE_XAF = 100;
+export const VOTE_PRICE_XAF = 50;
 
 /**
  * Convertit un montant XAF vers une devise cible

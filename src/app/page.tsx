@@ -15,10 +15,10 @@ export default function HomePage() {
             <Logo size={44} variant="icon" />
             <div>
               <div style={{ fontFamily: "var(--font-display)", fontSize: "1.05rem", fontWeight: 900, color: "var(--gray-900)", lineHeight: 1 }}>
-                MÉTA REINE
+                REINE DU META
               </div>
               <div style={{ fontSize: ".62rem", fontWeight: 700, color: "var(--gold)", letterSpacing: ".12em", textTransform: "uppercase" }}>
-                META QUEEN
+                BY HELEN
               </div>
             </div>
           </div>
@@ -132,13 +132,13 @@ export default function HomePage() {
             }}><Coins size={22} color="white" /></div>
             <div>
               <div style={{ fontSize: ".68rem", color: "rgba(201,168,130,.7)", fontWeight: 600, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 2 }}>
-                Vote gratuit
+                Prix du vote
               </div>
               <div style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 900, color: "#F0C040" }}>
-                100% gratuit
+                50 FCFA
               </div>
               <div style={{ fontSize: ".72rem", color: "rgba(201,168,130,.6)" }}>
-                Un seul vote par personne
+                Minimum 2 votes · Mobile Money (Fapshi)
               </div>
             </div>
           </div>

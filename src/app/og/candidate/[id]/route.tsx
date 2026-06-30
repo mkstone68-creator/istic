@@ -148,7 +148,7 @@ export async function GET(
               display: "flex",
             }}
           >
-MÉTA REINE · META QUEEN
+REINE DU META · BY HELEN
           </div>
 
           {/* Barre dorée à gauche */}

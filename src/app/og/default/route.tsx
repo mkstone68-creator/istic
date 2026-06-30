@@ -114,7 +114,7 @@ export async function GET() {
             </div>
           </div>
 
-          {/* MISS & MISTER */}
+          {/* REINE DU META */}
           <div style={{
             fontFamily: serif,
             fontSize: "68px",
@@ -124,10 +124,10 @@ export async function GET() {
             display: "flex",
             marginBottom: "6px",
           }}>
-            MÉTA REINE
+            REINE DU META
           </div>
 
-          {/* META QUEEN */}
+          {/* BY HELEN */}
           <div style={{
             fontFamily: serif,
             fontSize: "22px",
@@ -137,7 +137,7 @@ export async function GET() {
             display: "flex",
             marginBottom: "32px",
           }}>
-            META QUEEN
+            BY HELEN
           </div>
 
           {/* Bouton CTA */}

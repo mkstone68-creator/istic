@@ -1,5 +1,5 @@
 // src/components/ui/Logo.tsx
-// Logo SVG — Méta Reine / Meta Queen
+// Logo SVG — Reine du Meta By Helen
 
 interface LogoProps {
   size?: number;
@@ -93,11 +93,11 @@ export default function Logo({ size = 48, variant = "icon", className }: LogoPro
       {/* Small M on top */}
       <text x="240" y="90" textAnchor="middle" fontFamily="Georgia,serif" fontSize="40" fontWeight="bold" fill="white" opacity="0.95">M</text>
 
-      {/* MÉTA REINE */}
-      <text x="240" y="158" textAnchor="middle" fontFamily="Georgia,serif" fontSize="32" letterSpacing="6" fill="#C9A882">MÉTA REINE</text>
+      {/* REINE DU META */}
+      <text x="240" y="158" textAnchor="middle" fontFamily="Georgia,serif" fontSize="30" letterSpacing="5" fill="#C9A882">REINE DU META</text>
 
-      {/* META QUEEN */}
-      <text x="240" y="180" textAnchor="middle" fontFamily="Georgia,serif" fontSize="13" letterSpacing="5" fill="#C9A882" opacity="0.7">META QUEEN</text>
+      {/* BY HELEN */}
+      <text x="240" y="180" textAnchor="middle" fontFamily="Georgia,serif" fontSize="13" letterSpacing="5" fill="#C9A882" opacity="0.7">BY HELEN</text>
     </svg>
   );
 }

@@ -65,7 +65,7 @@ export default function CandidatsPage() {
             Nos candidats
           </h1>
           <div style={{ fontSize: ".72rem", color: "var(--gold)", fontWeight: 600, letterSpacing: ".05em" }}>
-            Méta Reine — Meta Queen
+            Reine du Meta By Helen
           </div>
         </header>
 

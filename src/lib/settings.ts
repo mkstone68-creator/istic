@@ -6,6 +6,9 @@ export type SiteSettings = {
   votingEndDate: Date | null;
   isMaintenance: boolean;
   maintenanceMsg: string | null;
+  organizerName: string | null;
+  organizerPhotoUrl: string | null;
+  organizerWhatsapp: string | null;
   updatedAt: Date;
 };
 

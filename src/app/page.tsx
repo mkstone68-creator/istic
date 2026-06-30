@@ -2,9 +2,17 @@
 import Link from "next/link";
 import BottomNav from "@/components/layout/BottomNav";
 import Logo from "@/components/ui/Logo";
-import { Shield, Zap, Globe, ArrowRight, Coins, Check, Trophy } from "lucide-react";
+import { Shield, Zap, Globe, ArrowRight, Coins, Check, Trophy, MessageCircle } from "lucide-react";
+import { getSettings } from "@/lib/settings";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const settings = await getSettings();
+  const orgPhoto = settings?.organizerPhotoUrl ?? null;
+  const orgName  = settings?.organizerName?.trim() || "Helen";
+  const orgWa    = (settings?.organizerWhatsapp ?? "").replace(/\D/g, "");
+
   return (
     <div className="shell">
       <div className="page" style={{ paddingBottom: "88px" }}>
@@ -31,16 +39,55 @@ export default function HomePage() {
             Plateforme officielle de vote
           </div>
           <h1 style={{
-            fontFamily: "var(--font-display)", fontSize: "2.3rem", fontWeight: 900,
-            lineHeight: 1.1, color: "var(--gray-900)", marginBottom: 14,
+            fontFamily: "var(--font-display)", fontSize: "1.7rem", fontWeight: 900,
+            lineHeight: 1.15, color: "var(--gray-900)", marginBottom: 12,
           }}>
             Votez pour vos{" "}
             <span className="text-gold-shimmer">candidats</span>{" "}
             préférés
           </h1>
-          <p style={{ color: "var(--gray-600)", fontSize: ".93rem", marginBottom: 26, maxWidth: 290, lineHeight: 1.6 }}>
-            Soutenez vos favoris et contribuez à faire gagner le meilleur de l'ISTIC Yaoundé.
+          <p style={{ color: "var(--gray-600)", fontSize: ".85rem", marginBottom: 22, maxWidth: 300, lineHeight: 1.6 }}>
+            Soutenez vos favoris et contribuez à faire gagner le meilleur du concours.
           </p>
+
+          {/* Organisatrice — visible uniquement si une photo est configurée côté admin */}
+          {orgPhoto && (
+            <div style={{
+              background: "white", border: "1.5px solid var(--gray-100)", borderRadius: "var(--radius-xl)",
+              padding: "16px", marginBottom: 22, boxShadow: "0 2px 14px rgba(0,0,0,.06)",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+            }}>
+              <img
+                src={orgPhoto}
+                alt={`Organisatrice — ${orgName}`}
+                style={{ width: "100%", maxWidth: 260, aspectRatio: "4 / 5", objectFit: "cover", borderRadius: "var(--radius-lg)", display: "block" }}
+              />
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: ".68rem", fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--gold)" }}>
+                  Présenté par
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem", fontWeight: 900, color: "var(--gray-900)" }}>
+                  {orgName}
+                </div>
+              </div>
+              {orgWa && (
+                <a
+                  href={`https://wa.me/${orgWa}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    width: "100%", padding: "13px", borderRadius: "var(--radius-xl)",
+                    background: "#25D366", color: "white", textDecoration: "none",
+                    fontWeight: 700, fontSize: ".9rem", boxShadow: "0 4px 16px rgba(37,211,102,.3)",
+                  }}
+                >
+                  <MessageCircle size={18} /> Contacter l&apos;organisatrice
+                </a>
+              )}
+            </div>
+          )}
+
           <Link href="/candidats" className="btn btn-primary" style={{ fontSize: "1rem" }}>
             Commencer à voter <ArrowRight size={18} />
           </Link>

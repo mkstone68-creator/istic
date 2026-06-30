@@ -64,12 +64,16 @@ model Vote {
 }
 
 model Settings {
-  id               String    @id @default("singleton")
-  votingStartDate  DateTime?
-  votingEndDate    DateTime?
-  isMaintenance    Boolean   @default(false)
-  maintenanceMsg   String?
-  updatedAt        DateTime  @updatedAt
+  id                String    @id @default("singleton")
+  votingStartDate   DateTime?
+  votingEndDate     DateTime?
+  isMaintenance     Boolean   @default(false)
+  maintenanceMsg    String?
+  // Organisatrice du concours — la photo conditionne l'affichage du bloc sur l'accueil
+  organizerName     String?
+  organizerPhotoUrl String?
+  organizerWhatsapp String?
+  updatedAt         DateTime  @updatedAt
 }
 
 enum TransactionStatus {

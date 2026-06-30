@@ -8,6 +8,9 @@ const updateSchema = z.object({
   votingEndDate: z.string().nullable().optional(),
   isMaintenance: z.boolean().optional(),
   maintenanceMsg: z.string().nullable().optional(),
+  organizerName: z.string().nullable().optional(),
+  organizerPhotoUrl: z.string().nullable().optional(),
+  organizerWhatsapp: z.string().nullable().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -42,6 +45,9 @@ export async function PUT(req: NextRequest) {
     if ("votingEndDate" in parsed.data) {
       data.votingEndDate = parsed.data.votingEndDate ? new Date(parsed.data.votingEndDate) : null;
     }
+    if ("organizerName" in parsed.data) data.organizerName = parsed.data.organizerName || null;
+    if ("organizerPhotoUrl" in parsed.data) data.organizerPhotoUrl = parsed.data.organizerPhotoUrl || null;
+    if ("organizerWhatsapp" in parsed.data) data.organizerWhatsapp = parsed.data.organizerWhatsapp || null;
 
     const settings = await prisma.settings.upsert({
       where: { id: "singleton" },
